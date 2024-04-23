@@ -1,0 +1,38 @@
+diff --git a/config.go b/config.go
+index ee032e6..2097955 100644
+--- a/config.go
++++ b/config.go
+@@ -113,5 +113,6 @@ func populateConfig(config *Config) *Config {
+ 		DisablePathMTUDiscovery:        config.DisablePathMTUDiscovery,
+ 		Allow0RTT:                      config.Allow0RTT,
+ 		Tracer:                         config.Tracer,
++		FirstPacketHijacker:            config.FirstPacketHijacker,
+ 	}
+ }
+diff --git a/interface.go b/interface.go
+index ca8544d..7063240 100644
+--- a/interface.go
++++ b/interface.go
+@@ -331,6 +331,8 @@ type Config struct {
+ 	// Enable QUIC datagram support (RFC 9221).
+ 	EnableDatagrams bool
+ 	Tracer          func(context.Context, logging.Perspective, ConnectionID) *logging.ConnectionTracer
++
++	FirstPacketHijacker func(data []byte, remoteAddr net.Addr, rcvTime time.Time)
+ }
+ 
+ // ClientHelloInfo contains information about an incoming connection attempt.
+diff --git a/server.go b/server.go
+index afbd18f..14de3f5 100644
+--- a/server.go
++++ b/server.go
+@@ -365,6 +365,9 @@ func (s *baseServer) handlePacket(p receivedPacket) {
+ }
+ 
+ func (s *baseServer) handlePacketImpl(p receivedPacket) bool /* is the buffer still in use? */ {
++	if s.config != nil && s.config.FirstPacketHijacker != nil {
++		s.config.FirstPacketHijacker(p.data, p.remoteAddr, p.rcvTime)
++	}
+ 	if !s.nextZeroRTTCleanup.IsZero() && p.rcvTime.After(s.nextZeroRTTCleanup) {
+ 		defer s.cleanupZeroRTTQueues(p.rcvTime)
+ 	}

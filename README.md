@@ -37,10 +37,10 @@
     ```
 
     ```
-    chrome.exe --user-data-dir=/tmp/xxx
-    chrome.exe -incognito
-    chrome.exe --user-data-dir=/tmp/xxx --disable-http2
-    chrome.exe --disable-http2 -incognito
+    chrome.exe --user-data-dir=/tmp/xxx --ignore-certificate-errors
+    chrome.exe -incognito --ignore-certificate-errors
+    chrome.exe --user-data-dir=/tmp/xxx --disable-http2 --ignore-certificate-errors
+    chrome.exe --disable-http2 -incognito --ignore-certificate-errors
     ```
 
 - Safari
@@ -82,8 +82,8 @@
 - https://github.com/salesforce/ja3
 - https://github.com/FoxIO-LLC/ja4
 - https://github.com/refraction-networking/uquic
-
 - https://github.com/gaukas/clienthellod
+- https://github.com/dreadl0ck/ja3
 
 - [JA 指纹识全系讲解（上）](https://github.com/kenyon-wong/docs/blob/757fb85d879026c7d30eb19fafcf4cec231d8616/%E5%85%88%E7%9F%A5%E7%A4%BE%E5%8C%BA/JA-%E6%8C%87%E7%BA%B9%E8%AF%86%E5%85%A8%E7%B3%BB%E8%AE%B2%E8%A7%A3-%E4%B8%8A-%E5%85%88%E7%9F%A5%E7%A4%BE%E5%8C%BA/JA-%E6%8C%87%E7%BA%B9%E8%AF%86%E5%85%A8%E7%B3%BB%E8%AE%B2%E8%A7%A3-%E4%B8%8A-%E5%85%88%E7%9F%A5%E7%A4%BE%E5%8C%BA.md)
 - [JA 指纹识全系讲解（下）](https://web.archive.org/web/20240422055319/https://xz.aliyun.com/t/14054?time__1311=mqmx9DBG0QD%3DNGNDQiiQGkfbOuiCdDcWoD)

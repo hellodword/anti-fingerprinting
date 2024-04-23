@@ -1,0 +1,29 @@
+version: "3"
+
+# not to build on server
+# go build -trimpath -ldflags "-s -w -buildid=" -o dist/collector ./cmd/collector
+
+services:
+  pixels:
+    deploy:
+      resources:
+        limits:
+          cpus: "0.7"
+          memory: 512M
+    logging:
+      driver: "local"
+      options:
+        max-size: "50m"
+    image: gcr.io/distroless/base-debian12:nonroot
+    restart: always
+    ports:
+      - "8443:8443"
+      - "8443:8443/udp"
+    volumes:
+      # https://github.com/GoogleContainerTools/distroless/issues/427#issuecomment-547874186
+      # mkdir db; chown 65532:65532 db
+      # chmod 444 certs/*
+      - .:/home/nonroot/collector:rw
+    working_dir: "/home/nonroot/collector"
+    entrypoint:
+      ["/home/nonroot/collector/collector", "-verbose", "-addr", "0.0.0.0:8443"]

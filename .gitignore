@@ -1,3 +1,9 @@
 *.cab
 *.msi
 *.exe
+data
+.3rd
+tmp
+certs
+*result.json
+dist

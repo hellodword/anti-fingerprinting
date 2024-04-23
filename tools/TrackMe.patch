@@ -1,0 +1,169 @@
+diff --git a/Dockerfile b/Dockerfile
+index 2c9c698..a25fe91 100644
+--- a/Dockerfile
++++ b/Dockerfile
+@@ -4,9 +4,8 @@ RUN apk add build-base
+ RUN apk add libpcap-dev
+ WORKDIR /app
+ 
+-COPY go.mod go.sum config.json ./
++COPY go.mod go.sum ./
+ COPY *.go ./
+-COPY certs ./certs/
+ COPY static ./static/
+ 
+ RUN go mod download
+diff --git a/config.example.json b/config.example.json
+index 632f1db..bb403a0 100644
+--- a/config.example.json
++++ b/config.example.json
+@@ -8,5 +8,6 @@
+   "mongoURL": "",
+   "mongo_database": "TrackMe",
+   "mongo_collection": "requests",
+-  "mongo_log_ips": false
++  "mongo_log_ips": false,
++  "device": "eth0"
+ }
+diff --git a/main.go b/main.go
+index 9a1b05e..cb3a220 100755
+--- a/main.go
++++ b/main.go
+@@ -6,6 +6,8 @@ import (
+ 	"log"
+ 	"net"
+ 	"net/http"
++	"strconv"
++	"sync"
+ 	"time"
+ 
+ 	tls "github.com/wwhtrbbtt/utls"
+@@ -21,7 +23,7 @@ var ctx = context.TODO()
+ var client *mongo.Client
+ var local = false
+ var connectedToDB = false
+-var TCPFingerprints = map[string]TCPIPDetails{}
++var TCPFingerprints sync.Map
+ 
+ func init() {
+ 	// Loads the config and connects to database (if enabled)
+@@ -108,9 +110,16 @@ func main() {
+ 		log.Fatal("Error starting tcp listener", err)
+ 	}
+ 
++	tlsPort, err := strconv.Atoi(c.TLSPort)
++	if err != nil {
++		log.Fatal("Error parsing tls port", err)
++	}
++
+ 	defer listener.Close()
+ 	go StartRedirectServer(c.Host, c.HTTPPort)
+-	go sniffTCP()
++	if c.Device != "" {
++		go sniffTCP(c.Device, tlsPort)
++	}
+ 
+ 	for {
+ 		conn, err := listener.Accept()
+diff --git a/router.go b/router.go
+index a33f61c..0fd8afc 100755
+--- a/router.go
++++ b/router.go
+@@ -1,8 +1,10 @@
+ package main
+ 
+ import (
++	"encoding/json"
+ 	"fmt"
+ 	"net/url"
++	"os"
+ 	"strings"
+ 	"time"
+ )
+@@ -19,7 +21,9 @@ func cleanIP(ip string) string {
+ 
+ // Router returns bytes and content type that should be sent to the client
+ func Router(path string, res Response) ([]byte, string) {
+-	res.TCPIP = TCPFingerprints[cleanIP(res.IP)]
++	if v, ok := TCPFingerprints.Load(cleanIP(res.IP)); ok {
++		res.TCPIP = v.(TCPIPDetails)
++	}
+ 	res.TLS.JA4 = CalculateJa4(res.TLS)
+ 	// res.Donate = "Please consider donating to keep this API running."
+ 	Log(fmt.Sprintf("%v %v %v %v %v", cleanIP(res.IP), res.Method, res.HTTPVersion, res.path, res.TLS.JA3Hash))
+@@ -30,6 +34,11 @@ func Router(path string, res Response) ([]byte, string) {
+ 		SaveRequest(res)
+ 	}
+ 
++	{
++		b, _ := json.MarshalIndent(res, "", "  ")
++		os.WriteFile("result.json", b, 0644)
++	}
++
+ 	u, _ := url.Parse("https://tls.peet.ws" + path)
+ 	m, _ := url.ParseQuery(u.RawQuery)
+ 
+diff --git a/structs.go b/structs.go
+index 64906eb..8852826 100755
+--- a/structs.go
++++ b/structs.go
+@@ -110,6 +110,7 @@ type Config struct {
+ 	Collection string `json:"mongo_collection"`
+ 	DB         string `json:"mongo_database"`
+ 	LogIPs     bool   `json:"mongo_log_ips"`
++	Device     string `json:"device"`
+ }
+ 
+ func (c *Config) LoadFromFile() error {
+@@ -136,6 +137,7 @@ func (c *Config) LoadFromFile() error {
+ 	c.Collection = tmp.Collection
+ 	c.DB = tmp.DB
+ 	c.LogIPs = tmp.LogIPs
++	c.Device = tmp.Device
+ 	return nil
+ }
+ 
+diff --git a/tcp.go b/tcp.go
+index 976271e..c86a05f 100644
+--- a/tcp.go
++++ b/tcp.go
+@@ -11,10 +11,8 @@ import (
+ )
+ 
+ var (
+-	// device string = "eth0"
+-	device       string = "en0"
+-	snapshot_len int32  = 1024
+-	promiscuous  bool   = false
++	snapshot_len int32 = 1024
++	promiscuous  bool  = false
+ 	err          error
+ 	timeout      time.Duration = 1 * time.Millisecond
+ 	handle       *pcap.Handle
+@@ -113,7 +111,7 @@ func parseIP(packet gopacket.Packet) *IPDetails {
+ 	}
+ }
+ 
+-func sniffTCP() {
++func sniffTCP(device string, tlsPort int) {
+ 	// devices()
+ 	// Open device
+ 	handle, err = pcap.OpenLive(device, snapshot_len, promiscuous, timeout)
+@@ -129,7 +127,7 @@ func sniffTCP() {
+ 
+ 			ip := parseIP(packet) //
+ 			tcp := tcpLayer.(*layers.TCP)
+-			if !tcp.ACK || tcp.DstPort != 443 || ip.IPVersion == 0 {
++			if !tcp.ACK || int(tcp.DstPort) != tlsPort || ip.IPVersion == 0 {
+ 				continue
+ 			}
+ 			// Process packet here
+@@ -165,7 +163,7 @@ func sniffTCP() {
+ 			src := fmt.Sprintf("%s:%v", pack.IP.SrcIP, pack.SrcPort)
+ 			// dst := fmt.Sprintf("%s:%v", pack.IP.DstIp, pack.DstPort)
+ 			// fmt.Printf("TCP Packet %v -> %v\n", src, dst)
+-			TCPFingerprints[src] = pack
++			TCPFingerprints.Store(src, pack)
+ 		}
+ 	}
+ }
