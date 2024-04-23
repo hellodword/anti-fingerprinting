@@ -1,0 +1,115 @@
+name: chrome on windows
+
+on:
+  workflow_dispatch:
+
+env:
+  # for git bash
+  LC_ALL: en_US.UTF-8
+
+jobs:
+  build-and-deploy:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        include:
+          - version: "124.0.6367.61"
+            url: "https://dl.google.com/release2/chrome/adlnmvamzkoffwsicg4sjgtbd5na_124.0.6367.61/124.0.6367.61_chrome_installer.exe"
+            hash: "8854432065ac1b88e2145fc4f90e99ea7616b3abcdff5d780a5b757a71fb0b4d"
+          - version: "123.0.6312.123"
+            url: "https://dl.google.com/release2/chrome/acq7ad7frffpcbzjbrwktmqa6vgq_123.0.6312.123/123.0.6312.123_chrome_installer.exe"
+            hash: "f422045c867b91f97c0c91b3de550865bdf2ab1a3182ff5522c997f4f514456d"
+    steps:
+      # - shell: bash
+      #   run: |
+      #     echo 111
+      #     date
+      #     pwd
+      #     echo a123 | grep -oP '\d+'
+
+      - name: install chrome ${{ matrix.version }}
+        run: |
+          cd $env:temp
+          $Path = $env:TEMP
+          $Installer = "chrome_installer.exe"
+          Invoke-WebRequest "${{ matrix.url }}" -OutFile $Path$Installer
+          (Get-FileHash $Path$Installer).Hash -eq "${{ matrix.hash }}"
+
+          # -Wait will never return, dont know why
+          $proc = Start-Process -FilePath $Path$Installer -Args "--silence --install --do-not-launch-chrome --disable-progress" -Verb RunAs -PassThru
+
+          # keep track of timeout event
+          $timeouted = $null # reset any previously set timeout
+
+          # wait up to x seconds for normal termination
+          $proc | Wait-Process -Timeout 120 -ErrorAction SilentlyContinue -ErrorVariable timeouted
+          if ($timeouted)
+          {
+              # terminate the process
+              # $proc | kill
+              echo "timeouted"
+          }
+          # Remove-Item $Path$Installer
+
+      - name: search chrome
+        run: |
+          # gci env:* | sort-object name
+          Get-ChildItem -Path $env:LOCALAPPDATA\Google -Filter chrome.exe -Recurse -ErrorAction SilentlyContinue -Force
+          Get-ChildItem -Path $env:ProgramFiles\Google -Filter chrome.exe -Recurse -ErrorAction SilentlyContinue -Force
+          Get-ChildItem -Path ${env:ProgramFiles(x86)}\Google -Filter chrome.exe -Recurse -ErrorAction SilentlyContinue -Force
+
+      - name: tls.peet.ws
+        run: |
+          $chrome = "$env:ProgramFiles\Google\Chrome\Application\chrome.exe"
+          $proc = Start-Process -FilePath "$chrome" -Args "-incognito --headless --disable-gpu --print-to-pdf=${{ github.workspace }}\tls.peet.ws.pdf --run-all-compositor-stages-before-draw --ignore-certificate-errors https://tls.peet.ws/api/all" -PassThru
+          # keep track of timeout event
+          $timeouted = $null # reset any previously set timeout
+
+          # wait up to x seconds for normal termination
+          $proc | Wait-Process -Timeout 120 -ErrorAction SilentlyContinue -ErrorVariable timeouted
+          if ($timeouted)
+          {
+              # terminate the process
+              # $proc | kill
+              echo "timeouted"
+          }
+
+      - name: client.tlsfingerprint.io
+        run: |
+          $chrome = "$env:ProgramFiles\Google\Chrome\Application\chrome.exe"
+          $proc = Start-Process -FilePath "$chrome" -Args "-incognito --headless --disable-gpu --print-to-pdf=${{ github.workspace }}\client.tlsfingerprint.io.pdf --run-all-compositor-stages-before-draw --ignore-certificate-errors https://client.tlsfingerprint.io/" -PassThru
+          # keep track of timeout event
+          $timeouted = $null # reset any previously set timeout
+
+          # wait up to x seconds for normal termination
+          $proc | Wait-Process -Timeout 120 -ErrorAction SilentlyContinue -ErrorVariable timeouted
+          if ($timeouted)
+          {
+              # terminate the process
+              # $proc | kill
+              echo "timeouted"
+          }
+
+      - name: quic.tlsfingerprint.io
+        run: |
+          $chrome = "$env:ProgramFiles\Google\Chrome\Application\chrome.exe"
+          $proc = Start-Process -FilePath "$chrome" -Args "-incognito --headless --disable-gpu --print-to-pdf=${{ github.workspace }}\quic.tlsfingerprint.io.pdf --run-all-compositor-stages-before-draw --ignore-certificate-errors https://quic.tlsfingerprint.io/qfp/" -PassThru
+          # keep track of timeout event
+          $timeouted = $null # reset any previously set timeout
+
+          # wait up to x seconds for normal termination
+          $proc | Wait-Process -Timeout 120 -ErrorAction SilentlyContinue -ErrorVariable timeouted
+          if ($timeouted)
+          {
+              # terminate the process
+              # $proc | kill
+              echo "timeouted"
+          }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chrome-${{ matrix.version }}
+          path: |
+            quic.tlsfingerprint.io.pdf
+            client.tlsfingerprint.io.pdf
+            tls.peet.ws.pdf

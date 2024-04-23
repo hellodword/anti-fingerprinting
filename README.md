@@ -4,8 +4,13 @@
 
 ### Desktop
 
+- https://github.com/dockur/windows/issues/187
+- https://github.com/dockur/windows/issues/212
+
 - Chrome
 
+  - https://googlechromelabs.github.io/chrome-for-testing/
+  - https://github.com/browser-actions/setup-chrome
   - https://stackoverflow.com/questions/54927496/how-to-download-older-versions-of-chrome-from-a-google-official-site
     ```sh
     curl -d '<?xml version="1.0" encoding="UTF-8"?>
@@ -41,6 +46,8 @@
     chrome.exe -incognito --ignore-certificate-errors
     chrome.exe --user-data-dir=/tmp/xxx --disable-http2 --ignore-certificate-errors
     chrome.exe --disable-http2 -incognito --ignore-certificate-errors
+
+    C:\Users\admin\AppData\Local\Google\Chrome\Application\chrome.exe -incognito --headless --disable-gpu --print-to-pdf=$env:TEMP\test.pdf --run-all-compositor-stages-before-draw --ignore-certificate-errors https://192.168.0.2:8443/v1/all
     ```
 
 - Safari
@@ -54,6 +61,7 @@
 
 - Edge
 
+  - https://github.com/browser-actions/setup-edge
   - https://www.microsoft.com/en-us/edge/business/download
   - https://www.catalog.update.microsoft.com/Search.aspx?q=Microsoft%20Edge%20
 
@@ -64,6 +72,7 @@
   ```
 
 - Firefox
+  - https://github.com/browser-actions/setup-firefox
   - https://ftp.mozilla.org/pub/firefox/releases/
 
 ### Mobile

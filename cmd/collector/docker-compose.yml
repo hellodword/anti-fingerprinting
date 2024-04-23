@@ -4,7 +4,7 @@ version: "3"
 # go build -trimpath -ldflags "-s -w -buildid=" -o dist/collector ./cmd/collector
 
 services:
-  pixels:
+  collector:
     deploy:
       resources:
         limits:

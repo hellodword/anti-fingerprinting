@@ -104,8 +104,6 @@ func main() {
 	// shutdown on interrupt signal (ctrl + c)
 	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 
-	// handler := http.HandlerFunc(echoServer)
-
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(cors.AllowAll().Handler)
