@@ -22,6 +22,7 @@ services:
     volumes:
       # https://github.com/GoogleContainerTools/distroless/issues/427#issuecomment-547874186
       # mkdir db; chown 65532:65532 db
+      # chown 65532:65532 certs/*
       # chmod 444 certs/*
       - .:/home/nonroot/collector:rw
     working_dir: "/home/nonroot/collector"

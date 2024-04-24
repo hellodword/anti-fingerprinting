@@ -4,9 +4,6 @@
 
 ### Desktop
 
-- https://github.com/dockur/windows/issues/187
-- https://github.com/dockur/windows/issues/212
-
 - Chrome
 
   - https://googlechromelabs.github.io/chrome-for-testing/

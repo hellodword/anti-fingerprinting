@@ -9,7 +9,10 @@ mkdir -p certs
 [ -f certs/tls.key ] || \
 openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:secp384r1 -days 3650 \
   -nodes -keyout certs/tls.key -out certs/tls.crt -subj "/CN=localhost" \
-  -addext "subjectAltName=DNS:localhost,DNS:*.localhost,IP:127.0.0.1"
+  -addext "subjectAltName=DNS:localhost,DNS:*.localhost,DNS:example.org,IP:127.0.0.1,IP:172.17.0.1"
+
+# chown 65532:65532 certs/*
+# chmod 444 certs/*
 
 if [ ! -d tmp/TrackMe ]; then
   git clone --depth 1 https://github.com/wwhtrbbtt/TrackMe tmp/TrackMe
