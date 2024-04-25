@@ -20,8 +20,9 @@ Add-Content -Path $env:windir\System32\drivers\etc\hosts -Value "`n172.17.0.1`te
 ipconfig /flushdns
 
 # download, verify and install chrome
-Invoke-WebRequest "$env:URL" -OutFile $BasePath$Installer
-(Get-FileHash $BasePath$Installer).Hash -eq "$env:HASH"
+# Invoke-WebRequest "$env:URL" -OutFile $BasePath$Installer
+# (Get-FileHash $BasePath$Installer).Hash -eq "$env:HASH"
+cp $SavePath\chrome_installer.exe $BasePath$Installer
 $proc = Start-Process -FilePath $BasePath$Installer -Args "--silence --install --do-not-launch-chrome --disable-progress" -Verb RunAs -PassThru
 $timeouted = $null
 $proc | Wait-Process -Timeout 120 -ErrorAction SilentlyContinue -ErrorVariable timeouted

@@ -6,8 +6,8 @@
 
 - Chrome
 
-  - https://googlechromelabs.github.io/chrome-for-testing/
-  - https://github.com/browser-actions/setup-chrome
+  - ~~https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json~~ This is chromium
+  - ~~https://github.com/browser-actions/setup-chrome~~
   - https://stackoverflow.com/questions/54927496/how-to-download-older-versions-of-chrome-from-a-google-official-site
     ```sh
     curl -d '<?xml version="1.0" encoding="UTF-8"?>

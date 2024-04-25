@@ -1,0 +1,260 @@
+name: browser on windows in docker
+
+on:
+  workflow_dispatch:
+
+jobs:
+  # https://www.kenmuse.com/blog/dynamic-build-matrices-in-github-actions/
+  generate-versions:
+    runs-on: ubuntu-latest
+    outputs:
+      mymatrix: ${{ steps.dataStep.outputs.myoutput }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: apply patch
+        run: |
+          git clone --depth 1 -b v0.42.0 https://github.com/quic-go/quic-go .3rd/quic-go
+          pushd .3rd/quic-go
+          git apply ../../quic-go.patch
+          popd
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "stable"
+
+      - name: fetch latest browser
+        run: |
+          go mod download
+          go run ./cmd/fetch-latest-browser -o ./browser.json
+
+      - id: dataStep
+        run: |
+          browsers="$(cat browser.json)"
+          echo "myoutput=$(jq -cn --argjson environments "$browsers" '{"platform": ["win10","win11"], browser: $environments}')" >> $GITHUB_OUTPUT
+
+  run-browser:
+    runs-on: ubuntu-latest
+    needs: generate-versions
+    strategy:
+      matrix: ${{ fromJson(needs.generate-versions.outputs.mymatrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: apply patch
+        run: |
+          git clone --depth 1 -b v0.42.0 https://github.com/quic-go/quic-go .3rd/quic-go
+          pushd .3rd/quic-go
+          git apply ../../quic-go.patch
+          popd
+
+      - name: debug
+        run: |
+          set -x
+          df -T
+          df -T `pwd`
+
+      - uses: rokibhasansagar/slimhub_actions@a28a11a35d81967c82448c183cb17a34b7514a9a
+        with:
+          retain: "docker_buildkit,container_tools"
+
+      - name: debug
+        run: |
+          set -x
+          df -T
+          df -T `pwd`
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "stable"
+
+      - name: prepare ssh key and cert and else
+        run: |
+          set -x
+          mkdir -p ./windows/shared/
+
+          echo "URL=${{ matrix.browser.url }}" >> ./windows/shared/.env
+          echo "HASH=${{ matrix.browser.hash }}" >> ./windows/shared/.env
+
+          echo 'admin:$apr1$zyjICK.T$K6Q9fLUxiVMN2VQcUlDAI.' > ./windows/shared/.htpasswd
+
+          curl -fsSL --output ./windows/nginx.conf https://github.com/qemus/qemu-docker/raw/master/web/nginx.conf
+          sed -i '2s@^@    auth_basic "Administrator’s Area";\n    auth_basic_user_file /storage/shared/.htpasswd;\n@' ./windows/nginx.conf
+          head ./windows/nginx.conf
+
+          ssh-keygen -t rsa -b 4096 -C "dockur" -f dockur-sshkey -q -N ""
+          mv ./dockur-sshkey.pub ./windows/shared/
+          sudo chmod 600 ./dockur-sshkey
+
+          cp ./windows/run-${{ matrix.browser.browser }}.ps1 ./windows/shared/run-custom.ps1
+
+          mkdir -p ./dist/certs
+          openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:secp384r1 -days 3650 \
+            -nodes -keyout ./dist/certs/tls.key -out ./dist/certs/tls.crt -subj "/CN=localhost" \
+            -addext "subjectAltName=DNS:localhost,DNS:*.localhost,DNS:example.org,IP:127.0.0.1,IP:172.17.0.1"
+
+          sudo chown 65532:65532 ./dist/certs/*
+          sudo chmod 444 ./dist/certs/*
+
+          sudo cp -r ./dist/certs ./windows/shared/
+
+          cp ./cmd/collector/docker-compose.yml ./dist/
+
+          mkdir -p ./dist/db
+          sudo chown 65532:65532 ./dist/db
+
+      - name: download ${{ matrix.browser.browser }} and verify
+        run: |
+          set -x
+          mkdir -p ./windows/shared/
+          aria2c --continue --out ./windows/shared/${{ matrix.browser.browser }}_installer.exe "${{ matrix.browser.url }}"
+          [ "$(sha256sum ./windows/shared/${{ matrix.browser.browser }}_installer.exe | awk '{print $1}')" = "${{ matrix.browser.hash }}" ] || \
+          [ "$(sha512sum ./windows/shared/${{ matrix.browser.browser }}_installer.exe | awk '{print "sha512:" $1}')" = "${{ matrix.browser.hash }}" ]
+
+      - name: build collector
+        run: |
+          go mod download
+          go build -trimpath -ldflags "-s -w -buildid=" -o dist/collector ./cmd/collector
+
+      - name: run collector
+        run: |
+          cd dist
+          docker compose up --build -d
+
+      - name: test collector
+        run: |
+          sleep 3s
+          curl -v -f -k https://172.17.0.1:8443/v1/all
+
+      - name: run windows
+        run: |
+          docker run -d \
+            --stop-timeout 120 --name windows \
+            -e MANUAL=N \
+            -e VERSION=${{ matrix.platform }} \
+            -v $PWD/windows/shared:/storage/shared:rw \
+            -v $PWD/windows/${{ matrix.platform }}x64.xml:/run/assets/${{ matrix.platform }}x64.xml:ro \
+            -v $PWD/windows/nginx.conf:/etc/nginx/sites-enabled/web.conf:ro \
+            -p 127.0.0.1:2222:22 -p 127.0.0.1:3389:3389 -p 127.0.0.1:8006:8006 \
+            --device=/dev/kvm --cap-add NET_ADMIN dockurr/windows
+
+      - name: expose VNC
+        run: |
+          docker run -d --name cloudflared --network host cloudflare/cloudflared tunnel --url http://127.0.0.1:8006
+
+      - name: wait
+        run: |
+          docker logs -f cloudflared &
+          docker logs -f windows &
+
+          while ! curl -s -f -k https://127.0.0.1:8443/v1/id/00000000-0000-0000-0000-000000000001 --output ${{ matrix.platform }}-${{ matrix.browser.browser }}-${{ matrix.browser.version }}-1.json;
+          do
+            sleep 10s
+          done
+
+          while ! curl -s -f -k https://127.0.0.1:8443/v1/id/00000000-0000-0000-0000-000000000002 --output ${{ matrix.platform }}-${{ matrix.browser.browser }}-${{ matrix.browser.version }}-2.json;
+          do
+            sleep 2s
+          done
+
+          while ! curl -s -f -k https://127.0.0.1:8443/v1/id/00000000-0000-0000-0000-000000000003 --output ${{ matrix.platform }}-${{ matrix.browser.browser }}-${{ matrix.browser.version }}-3.json;
+          do
+            sleep 2s
+          done
+
+      - name: debug
+        run: |
+          set -x
+          df -T
+          df -T `pwd`
+
+      - name: debug
+        run: |
+          set -x
+
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i $PWD/dockur-sshkey docker@127.0.0.1 -p 2222 ls
+
+          docker exec windows ip a
+
+          sudo apt-get install -y nginx
+
+          curl -v 127.0.0.1
+
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i $PWD/dockur-sshkey docker@127.0.0.1 -p 2222 \
+            curl.exe -v 172.17.0.1
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform }}-${{ matrix.browser.browser }}-${{ matrix.browser.version }}
+          path: |
+            ${{ matrix.platform }}-${{ matrix.browser.browser }}-${{ matrix.browser.version }}-*.json
+
+  update-assets:
+    runs-on: ubuntu-latest
+    # # avoid conflict
+    # concurrency:
+    #   group: ${{ github.workflow }}
+    #   cancel-in-progress: false
+    needs: [generate-versions, run-browser]
+    strategy:
+      matrix: ${{ fromJson(needs.generate-versions.outputs.mymatrix) }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.platform }}-${{ matrix.browser.browser }}-${{ matrix.browser.version }}
+
+      - name: verify and update content
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for i in {1..3}
+          do
+            sleep $[ ( $RANDOM % 30 )  + 1 ]s
+
+            filename="${{ matrix.platform }}-${{ matrix.browser.browser }}-${{ matrix.browser.version }}-$i.json"
+            json="$(cat $filename)"
+            echo "$json" | jq -e . >/dev/null 2>&1
+
+            content="$(echo "$json" | base64 -w0)"
+            message="update $filename"
+
+            url="https://api.github.com/repos/hellodword/tls-fingerprinting/contents/$filename"
+
+            sha="$(curl -sSL \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "$url?ref=assets" | jq -r 'select(.sha != null) | .sha')"
+
+            if [ -n "$sha" ]; then
+              body="$(jq -cn \
+                --arg arg_content "$content" \
+                --arg arg_message "$message" \
+                --arg arg_sha "$sha" \
+                '{message: $arg_message,"committer":{"name":"dependabot[bot]","email":"49699333+dependabot[bot]@users.noreply.github.com"},"branch":"assets",sha: $arg_sha,content: $arg_content}')"
+            else
+              body="$(jq -cn \
+                --arg arg_content "$content" \
+                --arg arg_message "$message" \
+                '{message: $arg_message,"committer":{"name":"dependabot[bot]","email":"49699333+dependabot[bot]@users.noreply.github.com"},"branch":"assets",content: $arg_content}')"
+            fi
+
+            echo "body $body"
+
+            curl -fsSL \
+              -X PUT \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "$url" \
+              -d "$body" || \
+            curl -fsSL \
+              -X PUT \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "$url" \
+              -d "$body"
+          done
