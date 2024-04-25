@@ -69,8 +69,17 @@
   ```
 
 - Firefox
+
   - https://github.com/browser-actions/setup-firefox
   - https://ftp.mozilla.org/pub/firefox/releases/
+
+  ```sh
+  curl -fsSL https://ftp.mozilla.org/pub/firefox/releases/ | grep -oP '(?<="/pub/firefox/releases/)\d+(\.\d+)+(?=/")' | sort -Vr | head -n 10
+  ```
+
+  - https://firefox-source-docs.mozilla.org/browser/installer/windows/installer/FullConfig.html
+  - https://wiki.mozilla.org/Firefox/CommandLineOptions
+  - https://stackoverflow.com/a/77009337
 
 ### Mobile
 
@@ -80,6 +89,31 @@
 - Safari
   - Docker-OSX + emulator + appium
   - corellium + appium
+
+---
+
+## Status
+
+- Windows
+
+  - [x] Firefox
+  - [x] Chrome
+  - [ ] Edge
+
+- macOS
+
+  - [ ] Safari
+
+- Android
+
+  - [ ] Webview
+  - [ ] Chrome
+  - [ ] Sansung Internet
+  - [ ] UC
+
+- iOS
+
+  - [ ] Safari
 
 ---
 

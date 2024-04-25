@@ -16,7 +16,8 @@ type Commit struct {
 type BrowserType string
 
 const (
-	BrowserTypeChrome BrowserType = "chrome"
+	BrowserTypeChrome  BrowserType = "chrome"
+	BrowserTypeFirefox BrowserType = "firefox"
 )
 
 type Browser struct {
@@ -26,7 +27,7 @@ type Browser struct {
 	BrowserType BrowserType `json:"browser,omitempty"`
 }
 
-type Chrome struct {
+type ScoopInstaller struct {
 	Browser
 	Architecture *struct {
 		X64 struct {
@@ -52,58 +53,113 @@ func fetch(u string, v interface{}) error {
 
 func main() {
 	output := flag.String("o", "browser.json", "output")
-	num := flag.Uint("n", 5, "num [1, 20]")
+	nchrome := flag.Uint("nchrome", 5, "num of chrome versions [1, 20]")
+	nfirefox := flag.Uint("nfirefox", 3, "num of firefox versions [1, 10]")
 	flag.Parse()
 
-	if *num < 1 || *num > 20 {
-		*num = 10
+	if *nchrome < 1 || *nchrome > 20 {
+		*nchrome = 5
 	}
-
-	var err error
-	var commits []Commit
-	err = fetch("https://api.github.com/repos/ScoopInstaller/Extras/commits?path=/bucket/googlechrome.json&sha=master&per_page=100&page=1", &commits)
-	if err != nil {
-		panic(err)
-	}
-
-	if len(commits) == 0 {
-		panic(len(commits))
+	if *nfirefox < 1 || *nfirefox > 10 {
+		*nfirefox = 3
 	}
 
 	var exists = map[string]struct{}{}
 	var browsers []Browser
 
-	for _, commit := range commits {
-		log.Println("sha", commit.Sha)
+	var err error
 
-		var chrome Chrome
-		err = fetch(fmt.Sprintf("https://raw.githubusercontent.com/ScoopInstaller/Extras/%s/bucket/googlechrome.json", commit.Sha), &chrome)
+	// Chrome
+	{
+		var commits []Commit
+		var count = 0
+		err = fetch("https://api.github.com/repos/ScoopInstaller/Extras/commits?path=/bucket/googlechrome.json&sha=master&per_page=100&page=1", &commits)
 		if err != nil {
 			panic(err)
 		}
 
-		if chrome.Version == "" || chrome.Architecture == nil || chrome.Architecture.X64.URL == "" || chrome.Architecture.X64.Hash == "" {
-			panic(commit.Sha)
+		if len(commits) == 0 {
+			panic(len(commits))
 		}
 
-		if _, ok := exists[chrome.Version]; !ok {
-			chrome.URL = chrome.Architecture.X64.URL
-			chrome.Hash = chrome.Architecture.X64.Hash
-			chrome.Architecture = nil
-			chrome.BrowserType = BrowserTypeChrome
+		for _, commit := range commits {
+			log.Println("sha", commit.Sha)
 
-			exists[chrome.Version] = struct{}{}
-			browsers = append(browsers, chrome.Browser)
+			var chrome ScoopInstaller
+			err = fetch(fmt.Sprintf("https://raw.githubusercontent.com/ScoopInstaller/Extras/%s/bucket/googlechrome.json", commit.Sha), &chrome)
+			if err != nil {
+				panic(err)
+			}
 
-			if len(browsers) >= int(*num) {
-				break
+			if chrome.Version == "" || chrome.Architecture == nil || chrome.Architecture.X64.URL == "" || chrome.Architecture.X64.Hash == "" {
+				panic(commit.Sha)
+			}
+
+			if _, ok := exists[chrome.Version]; !ok {
+				chrome.URL = chrome.Architecture.X64.URL
+				chrome.Hash = chrome.Architecture.X64.Hash
+				chrome.Architecture = nil
+				chrome.BrowserType = BrowserTypeChrome
+
+				exists[chrome.Version] = struct{}{}
+				browsers = append(browsers, chrome.Browser)
+				count++
+
+				if count >= int(*nchrome) {
+					break
+				}
 			}
 		}
 	}
 
-	b, _ := json.Marshal(browsers)
-	err = os.WriteFile(*output, b, 0644)
-	if err != nil {
-		panic(err)
+	// Firefox
+	{
+		var commits []Commit
+		var count = 0
+		err = fetch("https://api.github.com/repos/ScoopInstaller/Extras/commits?path=/bucket/firefox.json&sha=master&per_page=100&page=1", &commits)
+		if err != nil {
+			panic(err)
+		}
+
+		if len(commits) == 0 {
+			panic(len(commits))
+		}
+
+		for _, commit := range commits {
+			log.Println("sha", commit.Sha)
+
+			var firefox ScoopInstaller
+			err = fetch(fmt.Sprintf("https://raw.githubusercontent.com/ScoopInstaller/Extras/%s/bucket/firefox.json", commit.Sha), &firefox)
+			if err != nil {
+				panic(err)
+			}
+
+			if firefox.Version == "" || firefox.Architecture == nil || firefox.Architecture.X64.URL == "" || firefox.Architecture.X64.Hash == "" {
+				panic(commit.Sha)
+			}
+
+			if _, ok := exists[firefox.Version]; !ok {
+				firefox.URL = firefox.Architecture.X64.URL
+				firefox.Hash = firefox.Architecture.X64.Hash
+				firefox.Architecture = nil
+				firefox.BrowserType = BrowserTypeFirefox
+
+				exists[firefox.Version] = struct{}{}
+				browsers = append(browsers, firefox.Browser)
+				count++
+
+				if count >= int(*nfirefox) {
+					break
+				}
+			}
+		}
+	}
+
+	{
+		b, _ := json.Marshal(browsers)
+		err = os.WriteFile(*output, b, 0644)
+		if err != nil {
+			panic(err)
+		}
 	}
 }

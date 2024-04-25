@@ -428,6 +428,7 @@
           <CommandLine>netsh advfirewall firewall set rule group="Network Discovery" new enable=Yes</CommandLine>
           <Description>Enable Network Discovery and File Sharing</Description>
         </SynchronousCommand>
+<!--
         <SynchronousCommand>
           <Order>102</Order>
           <CommandLine>powershell.exe -NoLogo -Command "(new-object System.Net.WebClient).DownloadFile('https://raw.githubusercontent.com/containerd/containerd/9d108fa83bfa8c477e233d6729f3b0dba96cfff6/script/setup/enable_ssh_windows.ps1', 'C:\enable_ssh_windows.ps1')"</CommandLine>
@@ -438,6 +439,7 @@
           <CommandLine>powershell.exe -sta -ExecutionPolicy Bypass -Command "C:\enable_ssh_windows.ps1 -SSHPublicKey (cat \\host.lan\Data\dockur-sshkey.pub) *> C:\output-103.log"</CommandLine>
           <Description>Enable ssh</Description>
         </SynchronousCommand>
+-->
         <SynchronousCommand>
           <Order>104</Order>
           <CommandLine>powershell.exe -sta -ExecutionPolicy Bypass -Command "\\host.lan\Data\run-custom.ps1 *> C:\output-104.log"</CommandLine>

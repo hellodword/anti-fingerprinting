@@ -19,8 +19,13 @@ sudo chmod 600 ./dockur-sshkey
 
 mkdir -p ./windows/shared/certs
 openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:secp384r1 -days 3650 \
-  -nodes -keyout ./windows/shared/certs/tls.key -out ./windows/shared/certs/tls.crt -subj "/CN=localhost" \
-  -addext "subjectAltName=DNS:localhost,DNS:*.localhost,DNS:example.org,IP:127.0.0.1,IP:172.17.0.1"
+  -nodes -keyout ./windows/shared/certs/tls.key -out ./windows/shared/certs/tls.crt \
+  -subj '/C=US/ST=Denial/L=Springfield/O=Dis/CN=anything_but_whitespace' \
+  -addext "subjectAltName=DNS:localhost,DNS:*.localhost,DNS:example.org,IP:127.0.0.1,IP:172.17.0.1" \
+  -addext 'authorityKeyIdentifier = keyid,issuer'                        \
+  -addext 'basicConstraints = CA:FALSE'                                  \
+  -addext 'keyUsage = digitalSignature, keyEncipherment'                 \
+  -addext 'extendedKeyUsage=serverAuth'
 
 cp ./windows/run-chrome.ps1 ./windows/shared/run-custom.ps1
 
@@ -117,3 +122,7 @@ or read from file
 ```ps1
 (Get-ChildItem -Path $env:ProgramFiles\Google\Chrome\Application\chrome.exe,$env:LOCALAPPDATA\Google\Chrome\Application\chrome.exe -Filter chrome.exe -Recurse -ErrorAction SilentlyContinue -Force).FullName
 ```
+
+- Write file
+
+`echo $content > $filepath` will be `UTF-16 LE`, use `echo 'user_pref("network.http.http2.enabled", false);' | Out-File -encoding ASCII $env:TEMP\firefox3\user.js` instead
