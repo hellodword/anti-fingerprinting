@@ -3,6 +3,7 @@ module github.com/hellodword/tls-fingerprinting
 go 1.22
 
 require (
+	github.com/dop251/goja v0.0.0-20240220182346-e401ed450204
 	github.com/dreadl0ck/tlsx v1.0.1-google-gopacket
 	github.com/gaukas/clienthellod v0.4.2
 	github.com/go-chi/chi/v5 v5.0.12
@@ -21,7 +22,9 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/cloudflare/circl v1.3.7 // indirect
+	github.com/dlclark/regexp2 v1.7.0 // indirect
 	github.com/gaukas/godicttls v0.0.4 // indirect
+	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
 	github.com/go-task/slim-sprig v0.0.0-20230315185526-52ccab3ef572 // indirect
 	github.com/google/gopacket v1.1.19 // indirect
 	github.com/google/pprof v0.0.0-20231212022811-ec68065c825e // indirect

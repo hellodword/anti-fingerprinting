@@ -68,6 +68,13 @@
   file MicrosoftEdgeEnterpriseX64.msi
   ```
 
+  - https://github.com/he3als/EdgeRemover
+  - https://learn.microsoft.com/en-us/answers/questions/1359115/how-can-i-roll-back-a-edge-version-from-115-to-113
+  - https://learn.microsoft.com/en-us/deployedge/edge-learnmore-rollback
+  - https://pureinfotech.com/rollback-previous-version-microsoft-edge/
+  - https://superuser.com/questions/1759206/how-to-install-rollback-to-a-specific-version-of-microsoft-edge-on-windows
+  - https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/msiexec#parameters-1
+
 - Firefox
 
   - https://github.com/browser-actions/setup-firefox
@@ -77,6 +84,8 @@
   curl -fsSL https://ftp.mozilla.org/pub/firefox/releases/ | grep -oP '(?<="/pub/firefox/releases/)\d+(\.\d+)+(?=/")' | sort -Vr | head -n 10
   ```
 
+  - https://edgeupdates.microsoft.com/api/products
+  - https://github.com/he3als/EdgeRemover/blob/5a7b3b9fc1891f071ce1bde43c6715a64c6a928a/RemoveEdge.ps1#L254
   - https://firefox-source-docs.mozilla.org/browser/installer/windows/installer/FullConfig.html
   - https://wiki.mozilla.org/Firefox/CommandLineOptions
   - https://stackoverflow.com/a/77009337

@@ -18,6 +18,7 @@ import (
 	"github.com/dreadl0ck/tlsx"
 	"github.com/gaukas/clienthellod"
 	"github.com/google/uuid"
+	"github.com/hellodword/tls-fingerprinting/internal/common"
 	"github.com/quic-go/quic-go"
 	"github.com/quic-go/quic-go/http3"
 	"github.com/wi1dcard/fingerproxy/pkg/fingerprint"
@@ -166,13 +167,13 @@ func echoServer(db *gorm.DB) func(http.ResponseWriter, *http.Request) {
 			return
 		}
 
-		var res = map[string]any{
-			"url":        req.URL.String(),
-			"user-agent": req.UserAgent(),
-			"headers":    req.Header,
-			"proto":      req.Proto,
-			"tls":        req.TLS,
-			"id":         _uuid,
+		var res = common.CollectedInfo{
+			URL:       req.URL.String(),
+			UserAgent: req.UserAgent(),
+			Headers:   req.Header,
+			Proto:     req.Proto,
+			TLS:       req.TLS,
+			ID:        _uuid,
 		}
 
 		data, ok := metadata.FromContext(req.Context())
@@ -215,23 +216,23 @@ func echoServer(db *gorm.DB) func(http.ResponseWriter, *http.Request) {
 				return
 			}
 
-			res["fingerproxy"] = map[string]any{
-				"clienthello": data.ClientHelloRecord,
-				"ja3":         ja3.DigestHex(_ja3),
-				"ja4":         _ja4.String(),
-				"http2":       _http2,
-				"detail": map[string]any{
-					"ja3":      _ja3,
-					"ja4":      _ja4,
-					"http2":    data.HTTP2Frames,
-					"metadata": data,
-				},
+			res.FingerProxy = &common.CollectedInfoFingerProxy{
+				ClientHello: data.ClientHelloRecord,
+				JA3:         ja3.DigestHex(_ja3),
+				JA4:         _ja4.String(),
+				HTTP2:       _http2,
 			}
 
-			res["clienthellod"] = map[string]any{
-				"tls": ch,
-				"raw": ch.Raw(),
+			res.FingerProxy.Detail.JA3 = _ja3
+			res.FingerProxy.Detail.JA4 = _ja4
+			res.FingerProxy.Detail.HTTP2 = data.HTTP2Frames
+			res.FingerProxy.Detail.MetaData = data
+
+			res.Clienthellod = &common.CollectedInfoClienthellod{
+				TLS: ch,
+				Raw: ch.Raw(),
 			}
+
 		} else {
 			defer quicFirstPacketPool.Delete(req.RemoteAddr)
 
@@ -251,9 +252,9 @@ func echoServer(db *gorm.DB) func(http.ResponseWriter, *http.Request) {
 				return
 			}
 
-			res["clienthellod"] = map[string]any{
-				"quic": cip,
-				"raw":  quicFirst,
+			res.Clienthellod = &common.CollectedInfoClienthellod{
+				QUIC: cip,
+				Raw:  quicFirst,
 			}
 		}
 

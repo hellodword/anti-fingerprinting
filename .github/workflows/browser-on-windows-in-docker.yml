@@ -78,6 +78,7 @@ jobs:
 
           echo "URL=${{ matrix.browser.url }}" >> ./windows/shared/.env
           echo "HASH=${{ matrix.browser.hash }}" >> ./windows/shared/.env
+          echo "VERSION=${{ matrix.browser.version }}" >> ./windows/shared/.env
 
           echo 'admin:$apr1$zyjICK.T$K6Q9fLUxiVMN2VQcUlDAI.' > ./windows/shared/.htpasswd
 
@@ -114,10 +115,23 @@ jobs:
       - name: download ${{ matrix.browser.browser }} and verify
         run: |
           set -x
+
           mkdir -p ./windows/shared/
-          aria2c --continue --out ./windows/shared/${{ matrix.browser.browser }}_installer.exe "${{ matrix.browser.url }}"
-          [ "$(sha256sum ./windows/shared/${{ matrix.browser.browser }}_installer.exe | awk '{print $1}')" = "${{ matrix.browser.hash }}" ] || \
-          [ "$(sha512sum ./windows/shared/${{ matrix.browser.browser }}_installer.exe | awk '{print "sha512:" $1}')" = "${{ matrix.browser.hash }}" ]
+
+          aria2c --continue --out ./windows/shared/installer "${{ matrix.browser.url }}"
+
+          [ -z "${{ matrix.browser.hash }}" ] || \
+          [ "$(sha256sum ./windows/shared/installer | awk '{print $1}')" = "${{ matrix.browser.hash }}" ] || \
+          [ "$(sha1sum ./windows/shared/installer | awk '{print $1}')" = "${{ matrix.browser.hash }}" ] || \
+          [ "$(sha512sum ./windows/shared/installer | awk '{print "sha512:" $1}')" = "${{ matrix.browser.hash }}" ]
+
+          if [[ "${{ matrix.browser.url }}" == *.cab ]]; then
+            sudo apt-get install -y cabextract
+            cabextract ./windows/shared/installer
+            mv MicrosoftEdgeEnterpriseX64.msi ./windows/shared/installer
+          fi
+
+          mv ./windows/shared/installer ./windows/shared/${{ matrix.browser.browser }}_installer.exe
 
       - name: build collector
         run: |
