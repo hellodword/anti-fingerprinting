@@ -52,14 +52,14 @@ while ((Get-Date) -lt ($startTime.AddSeconds($timeout))) {
   $productVersion = (Get-Item "$edge").VersionInfo.ProductVersion
   $fileVersion = (Get-Item "$edge").VersionInfo.FileVersion
   Write-Host "productVersion $productVersion fileVersion $fileVersion"
-  if ($productVersion -eq "$env:VERSION" -and $fileVersion -eq "$env:VERSION") {
+  if ($productVersion -eq "$env:BROWSER_VERSION" -and $fileVersion -eq "$env:BROWSER_VERSION") {
     $success = "true"
     break
   }
 }
 
 if (!$success) {
-  Throw "replace $oriProductVersion with $env:VERSION failed"
+  Throw "replace $oriProductVersion with $env:BROWSER_VERSION failed"
 }
 
 # 00000000-0000-0000-0000-000000000001 incognito / inprivate

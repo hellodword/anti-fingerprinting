@@ -12,11 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: apply patch
-        run: |
-          git clone --depth 1 -b v0.42.0 https://github.com/quic-go/quic-go .3rd/quic-go
-          pushd .3rd/quic-go
-          git apply ../../quic-go.patch
-          popd
+        run: ./scripts/apply-patch.sh
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -25,12 +21,14 @@ jobs:
 
       - name: fetch latest browser
         run: |
+          mkdir -p dist
           go mod download
-          go run ./cmd/fetch-latest-browser -o ./browser.json
+          go build -trimpath -ldflags "-s -w -buildid=" -o ./dist/fetch-latest-browser ./cmd/fetch-latest-browser
+          docker run -v $PWD/dist:/w -w /w gcr.io/distroless/base-debian12:latest /w/fetch-latest-browser
 
       - id: dataStep
         run: |
-          browsers="$(cat browser.json)"
+          browsers="$(cat ./dist/browser.json)"
           echo "myoutput=$(jq -cn --argjson environments "$browsers" '{"platform": ["win10","win11"], browser: $environments}')" >> $GITHUB_OUTPUT
 
   run-browser:
@@ -44,13 +42,43 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: apply patch
-        run: |
-          git clone --depth 1 -b v0.42.0 https://github.com/quic-go/quic-go .3rd/quic-go
-          pushd .3rd/quic-go
-          git apply ../../quic-go.patch
-          popd
+        run: ./scripts/apply-patch.sh
 
-      - name: debug
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "stable"
+
+      - name: build collector
+        run: ./scripts/build-collector.sh
+
+      - name: prepare
+        run: |
+          ./scripts/dockur-nginx-auth.sh
+          ./scripts/generate-certs.sh
+          ./scripts/generate-ssh-key.sh
+
+      - name: download ${{ matrix.browser.browser }} and verify
+        env:
+          BROWSER_BROWSER: ${{ matrix.browser.browser }}
+          BROWSER_URL: ${{ matrix.browser.url }}
+          BROWSER_HASH: ${{ matrix.browser.hash }}
+          BROWSER_VERSION: ${{ matrix.browser.version }}
+        run: ./scripts/download-browser.sh
+
+      - name: run collector
+        run: ./scripts/run-collector.sh
+
+      - name: test collector
+        run: |
+          sleep 3s
+          curl -v -f -k https://172.17.0.1:8443/v1/all
+
+      - name: expose VNC
+        run: |
+          docker run --rm -d --name cloudflared --network host cloudflare/cloudflared tunnel --url http://127.0.0.1:8006
+
+      - name: (Debug) show storage
         run: |
           set -x
           df -T
@@ -60,114 +88,28 @@ jobs:
         with:
           retain: "docker_buildkit,container_tools"
 
-      - name: debug
+      - name: (Debug) show storage
         run: |
           set -x
           df -T
           df -T `pwd`
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: "stable"
-
-      - name: prepare ssh key and cert and else
-        run: |
-          set -x
-          mkdir -p ./windows/shared/
-
-          echo "URL=${{ matrix.browser.url }}" >> ./windows/shared/.env
-          echo "HASH=${{ matrix.browser.hash }}" >> ./windows/shared/.env
-          echo "VERSION=${{ matrix.browser.version }}" >> ./windows/shared/.env
-
-          echo 'admin:$apr1$zyjICK.T$K6Q9fLUxiVMN2VQcUlDAI.' > ./windows/shared/.htpasswd
-
-          curl -fsSL --output ./windows/nginx.conf https://github.com/qemus/qemu-docker/raw/master/web/nginx.conf
-          sed -i '2s@^@    auth_basic "Administrator’s Area";\n    auth_basic_user_file /storage/shared/.htpasswd;\n@' ./windows/nginx.conf
-          head ./windows/nginx.conf
-
-          ssh-keygen -t rsa -b 4096 -C "dockur" -f dockur-sshkey -q -N ""
-          mv ./dockur-sshkey.pub ./windows/shared/
-          sudo chmod 600 ./dockur-sshkey
-
-          cp ./windows/run-${{ matrix.browser.browser }}.ps1 ./windows/shared/run-custom.ps1
-
-          mkdir -p ./dist/certs
-          openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:secp384r1 -days 3650 \
-            -nodes -keyout ./dist/certs/tls.key -out ./dist/certs/tls.crt \
-            -subj '/C=US/ST=Denial/L=Springfield/O=Dis/CN=anything_but_whitespace' \
-            -addext "subjectAltName=DNS:localhost,DNS:*.localhost,DNS:example.org,IP:127.0.0.1,IP:172.17.0.1" \
-            -addext 'authorityKeyIdentifier = keyid,issuer'                        \
-            -addext 'basicConstraints = CA:FALSE'                                  \
-            -addext 'keyUsage = digitalSignature, keyEncipherment'                 \
-            -addext 'extendedKeyUsage=serverAuth'
-
-          sudo chown 65532:65532 ./dist/certs/*
-          sudo chmod 444 ./dist/certs/*
-
-          sudo cp -r ./dist/certs ./windows/shared/
-
-          cp ./cmd/collector/docker-compose.yml ./dist/
-
-          mkdir -p ./dist/db
-          sudo chown 65532:65532 ./dist/db
-
-      - name: download ${{ matrix.browser.browser }} and verify
-        run: |
-          set -x
-
-          mkdir -p ./windows/shared/
-
-          aria2c --continue --out ./windows/shared/installer "${{ matrix.browser.url }}"
-
-          [ -z "${{ matrix.browser.hash }}" ] || \
-          [ "$(sha256sum ./windows/shared/installer | awk '{print $1}')" = "${{ matrix.browser.hash }}" ] || \
-          [ "$(sha1sum ./windows/shared/installer | awk '{print $1}')" = "${{ matrix.browser.hash }}" ] || \
-          [ "$(sha512sum ./windows/shared/installer | awk '{print "sha512:" $1}')" = "${{ matrix.browser.hash }}" ]
-
-          if [[ "${{ matrix.browser.url }}" == *.cab ]]; then
-            sudo apt-get install -y cabextract
-            cabextract ./windows/shared/installer
-            mv MicrosoftEdgeEnterpriseX64.msi ./windows/shared/installer
-          fi
-
-          mv ./windows/shared/installer ./windows/shared/${{ matrix.browser.browser }}_installer.exe
-
-      - name: build collector
-        run: |
-          go mod download
-          go build -trimpath -ldflags "-s -w -buildid=" -o dist/collector ./cmd/collector
-
-      - name: run collector
-        run: |
-          cd dist
-          docker compose up --build -d
-
-      - name: test collector
-        run: |
-          sleep 3s
-          curl -v -f -k https://172.17.0.1:8443/v1/all
-
       - name: run windows
-        run: |
-          docker run -d \
-            --stop-timeout 120 --name windows \
-            -e MANUAL=N \
-            -e VERSION=${{ matrix.platform }} \
-            -v $PWD/windows/shared:/storage/shared:rw \
-            -v $PWD/windows/${{ matrix.platform }}x64.xml:/run/assets/${{ matrix.platform }}x64.xml:ro \
-            -v $PWD/windows/nginx.conf:/etc/nginx/sites-enabled/web.conf:ro \
-            -p 127.0.0.1:2222:22 -p 127.0.0.1:3389:3389 -p 127.0.0.1:8006:8006 \
-            --device=/dev/kvm --cap-add NET_ADMIN dockurr/windows
+        env:
+          BROWSER_BROWSER: ${{ matrix.browser.browser }}
+          BROWSER_URL: ${{ matrix.browser.url }}
+          BROWSER_HASH: ${{ matrix.browser.hash }}
+          BROWSER_VERSION: ${{ matrix.browser.version }}
+          WINDOWS_VERSION: ${{ matrix.platform }}
+        run: ./scripts/run-dockur.sh
 
-      - name: expose VNC
+      - name: show trycloudflared
         run: |
-          docker run -d --name cloudflared --network host cloudflare/cloudflared tunnel --url http://127.0.0.1:8006
+          docker logs cloudflared 2>&1 | grep -oP 'https://[^\n \./]+\.trycloudflare.com'
 
       - name: wait
-        timeout-minutes: 45
+        timeout-minutes: 25
         run: |
-          docker logs -f cloudflared &
           docker logs -f windows &
 
           while ! curl -s -f -k https://127.0.0.1:8443/v1/id/00000000-0000-0000-0000-000000000001 --output ${{ matrix.platform }}-${{ matrix.browser.browser }}-${{ matrix.browser.version }}-1.json;
@@ -185,48 +127,17 @@ jobs:
             sleep 2s
           done
 
-      - name: debug
+      - name: (Debug) show storage
         run: |
           set -x
           df -T
           df -T `pwd`
-
-      # - name: debug
-      #   run: |
-      #     set -x
-
-      #     ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i $PWD/dockur-sshkey docker@127.0.0.1 -p 2222 ls
-
-      #     docker exec windows ip a
-
-      #     sudo apt-get install -y nginx
-
-      #     curl -v 127.0.0.1
-
-      #     ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i $PWD/dockur-sshkey docker@127.0.0.1 -p 2222 \
-      #       curl.exe -v 172.17.0.1
 
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.platform }}-${{ matrix.browser.browser }}-${{ matrix.browser.version }}
           path: |
             ${{ matrix.platform }}-${{ matrix.browser.browser }}-${{ matrix.browser.version }}-*.json
-
-      # update-assets:
-      #   runs-on: ubuntu-latest
-      #   # # avoid conflict
-      #   # concurrency:
-      #   #   group: ${{ github.workflow }}
-      #   #   cancel-in-progress: false
-      #   needs: [generate-versions, run-browser]
-      #   strategy:
-      #     matrix: ${{ fromJson(needs.generate-versions.outputs.mymatrix) }}
-      #   permissions:
-      #     contents: write
-      #   steps:
-      #     - uses: actions/download-artifact@v4
-      #       with:
-      #         name: ${{ matrix.platform }}-${{ matrix.browser.browser }}-${{ matrix.browser.version }}
 
       - name: verify and update content
         env:

@@ -25,8 +25,8 @@ Add-Content -Path $env:windir\System32\drivers\etc\hosts -Value "`n172.17.0.1`te
 ipconfig /flushdns
 
 # download, verify and install chrome
-# Invoke-WebRequest "$env:URL" -OutFile $BasePath\$Installer
-# (Get-FileHash $BasePath\$Installer).Hash -eq "$env:HASH"
+# Invoke-WebRequest "$env:BROWSER_URL" -OutFile $BasePath\$Installer
+# (Get-FileHash $BasePath\$Installer).Hash -eq "$env:BROWSER_HASH"
 cp $SavePath\$Installer $BasePath\$Installer
 $proc = Start-Process -FilePath $BasePath\$Installer -Args "--silence --install --do-not-launch-chrome --disable-progress" -Verb RunAs -PassThru
 $timeouted = $null
