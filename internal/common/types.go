@@ -3,6 +3,7 @@ package common
 import (
 	"crypto/tls"
 	"net/http"
+	"time"
 
 	"github.com/dreadl0ck/tlsx"
 	"github.com/gaukas/clienthellod"
@@ -30,6 +31,7 @@ type CollectedInfoClienthellod struct {
 }
 
 type CollectedInfo struct {
+	Date      time.Time            `json:"date"`
 	URL       string               `json:"url"`
 	UserAgent string               `json:"user-agent"`
 	Headers   http.Header          `json:"headers,omitempty"`

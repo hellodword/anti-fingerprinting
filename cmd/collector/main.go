@@ -168,6 +168,7 @@ func echoServer(db *gorm.DB) func(http.ResponseWriter, *http.Request) {
 		}
 
 		var res = common.CollectedInfo{
+			Date:      time.Now(),
 			URL:       req.URL.String(),
 			UserAgent: req.UserAgent(),
 			Headers:   req.Header,

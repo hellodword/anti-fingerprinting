@@ -52,6 +52,12 @@ jobs:
       - name: build collector
         run: ./scripts/build-collector.sh
 
+      - name: build compare-collectorinfo
+        run: |
+          mkdir -p dist
+          go mod download
+          go build -trimpath -ldflags "-s -w -buildid=" -o ./dist/compare-collectorinfo ./cmd/compare-collectorinfo
+
       - name: prepare
         run: |
           ./scripts/dockur-nginx-auth.sh
@@ -154,41 +160,53 @@ jobs:
             content="$(echo "$json" | base64 -w0)"
             message="update $filename"
 
+            http_code=$(curl -o /dev/null -sSL -w "%{http_code}" "https://raw.githubusercontent.com/hellodword/tls-fingerprinting/assets/$filename")
+
             url="https://api.github.com/repos/hellodword/tls-fingerprinting/contents/$filename"
 
-            sha="$(curl -sSL \
-              -H "Accept: application/vnd.github+json" \
-              -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-              -H "X-GitHub-Api-Version: 2022-11-28" \
-              "$url?ref=assets" | jq -r 'select(.sha != null) | .sha')"
-
-            if [ -n "$sha" ]; then
-              body="$(jq -cn \
-                --arg arg_content "$content" \
-                --arg arg_message "$message" \
-                --arg arg_sha "$sha" \
-                '{message: $arg_message,"committer":{"name":"dependabot[bot]","email":"49699333+dependabot[bot]@users.noreply.github.com"},"branch":"assets",sha: $arg_sha,content: $arg_content}')"
-            else
-              body="$(jq -cn \
-                --arg arg_content "$content" \
-                --arg arg_message "$message" \
-                '{message: $arg_message,"committer":{"name":"dependabot[bot]","email":"49699333+dependabot[bot]@users.noreply.github.com"},"branch":"assets",content: $arg_content}')"
+            if [ "$http_code" != "404" ]; then
+              rm -rf /tmp/src.json
+              curl -fsSL --output /tmp/src.json "https://raw.githubusercontent.com/hellodword/tls-fingerprinting/assets/$filename"
+              if docker run -v $PWD/dist:/w -w /w gcr.io/distroless/base-debian12:latest /w/compare-collectorinfo -s "$(cat /tmp/src.json)" -s "$(cat $filename)"; then
+                continue
+              fi
             fi
 
-            echo "body $body"
+            for j in {1..3}
+            do
+              if [ "$http_code" != "404" ]; then
+                sha="$(curl -sSL \
+                  -H "Accept: application/vnd.github+json" \
+                  -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                  -H "X-GitHub-Api-Version: 2022-11-28" \
+                  "$url?ref=assets" | jq -r 'select(.sha != null) | .sha')"
+                [ -n "$sha" ]
+                body="$(jq -cn \
+                  --arg arg_content "$content" \
+                  --arg arg_message "$message" \
+                  --arg arg_sha "$sha" \
+                  '{message: $arg_message,"committer":{"name":"dependabot[bot]","email":"49699333+dependabot[bot]@users.noreply.github.com"},"branch":"assets",sha: $arg_sha,content: $arg_content}')"
+              else
+                body="$(jq -cn \
+                  --arg arg_content "$content" \
+                  --arg arg_message "$message" \
+                  '{message: $arg_message,"committer":{"name":"dependabot[bot]","email":"49699333+dependabot[bot]@users.noreply.github.com"},"branch":"assets",content: $arg_content}')"
+              fi
 
-            curl -fsSL \
-              -X PUT \
-              -H "Accept: application/vnd.github+json" \
-              -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-              -H "X-GitHub-Api-Version: 2022-11-28" \
-              "$url" \
-              -d "$body" || \
-            curl -fsSL \
-              -X PUT \
-              -H "Accept: application/vnd.github+json" \
-              -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-              -H "X-GitHub-Api-Version: 2022-11-28" \
-              "$url" \
-              -d "$body"
+              echo "body $body"
+
+              if curl -fsSL \
+                -X PUT \
+                -H "Accept: application/vnd.github+json" \
+                -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                "$url" \
+                -d "$body"; then
+                break
+              fi
+
+              echo "update $filename failed $i-$j"
+              sleep $[ ( $RANDOM % 30 )  + 30 ]s
+            done
+
           done
