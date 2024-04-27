@@ -1,5 +1,7 @@
 # anti fingerprinting
 
+[![Matrix Space](https://img.shields.io/matrix/anti-fingerprinting:matrix.org)](https://matrix.to/#/#anti-fingerprinting:matrix.org)
+
 This project aims at anti-fingerprinting **programming**, it consists of the following components:
 
 - [ ] [**Collector**](./cmd/collector)
