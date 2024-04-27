@@ -31,15 +31,24 @@ type CollectedInfoClienthellod struct {
 }
 
 type CollectedInfo struct {
-	Date      time.Time            `json:"date"`
-	URL       string               `json:"url"`
-	UserAgent string               `json:"user-agent"`
-	Headers   http.Header          `json:"headers,omitempty"`
-	Proto     string               `json:"proto"`
-	TLS       *tls.ConnectionState `json:"tls,omitempty"`
+	BrowserType BrowserType          `json:"browser"`
+	Date        time.Time            `json:"date"`
+	URL         string               `json:"url"`
+	UserAgent   string               `json:"user-agent"`
+	Headers     http.Header          `json:"headers,omitempty"`
+	Proto       string               `json:"proto"`
+	TLS         *tls.ConnectionState `json:"tls,omitempty"`
 
 	ID string `json:"id"`
 
 	FingerProxy  *CollectedInfoFingerProxy  `json:"fingerproxy,omitempty"`
 	Clienthellod *CollectedInfoClienthellod `json:"clienthellod,omitempty"`
 }
+
+type BrowserType string
+
+const (
+	BrowserTypeChrome  BrowserType = "chrome"
+	BrowserTypeFirefox BrowserType = "firefox"
+	BrowserTypeEdge    BrowserType = "edge"
+)

@@ -5,7 +5,7 @@ import (
 	"flag"
 	"os"
 
-	"github.com/hellodword/tls-fingerprinting/internal/common"
+	"github.com/hellodword/anti-fingerprinting/internal/common"
 )
 
 // https://stackoverflow.com/a/28323276

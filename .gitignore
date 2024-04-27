@@ -11,3 +11,4 @@ dist
 .idea
 dockur-sshkey*
 .env
+/*.json

@@ -1,68 +1,8 @@
 ## windows
 
-### windows in docker
+I choose to implement it with `dockur/windows`(https://github.com/dockur/windows/issues/187#issuecomment-1960638868), not the GitHub Actions, because I want to make sure it'll be working anywhere, and I believe the full featured windows will provide more useful information.
 
-- https://github.com/dockur/windows/issues/187
-- Authentication: https://github.com/dockur/windows/issues/301#issuecomment-2018610554
-
-```sh
-# .htpasswd
-# openssl passwd -apr1
-
-curl -fsSL --output ./windows/nginx.conf https://github.com/qemus/qemu-docker/raw/master/web/nginx.conf
-sed -i '2s@^@    auth_basic "Administrator’s Area";\n    auth_basic_user_file /storage/shared/.htpasswd;\n@' ./windows/nginx.conf
-
-# https://unix.stackexchange.com/a/69318
-ssh-keygen -t rsa -b 4096 -C "dockur" -f dockur-sshkey -q -N ""
-mv ./dockur-sshkey.pub ./windows/shared/
-sudo chmod 600 ./dockur-sshkey
-
-mkdir -p ./windows/shared/certs
-openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:secp384r1 -days 3650 \
-  -nodes -keyout ./windows/shared/certs/tls.key -out ./windows/shared/certs/tls.crt \
-  -subj '/C=US/ST=Denial/L=Springfield/O=Dis/CN=anything_but_whitespace' \
-  -addext "subjectAltName=DNS:localhost,DNS:*.localhost,DNS:example.org,IP:127.0.0.1,IP:172.17.0.1" \
-  -addext 'authorityKeyIdentifier = keyid,issuer'                        \
-  -addext 'basicConstraints = CA:FALSE'                                  \
-  -addext 'keyUsage = digitalSignature, keyEncipherment'                 \
-  -addext 'extendedKeyUsage=serverAuth'
-
-cp ./windows/run-chrome.ps1 ./windows/shared/run-custom.ps1
-
-docker run --rm -it \
-  --stop-timeout 120 --name windows \
-  -e MANUAL=N \
-  -v /path/to/Win11_23H2_English_x64v2.iso:/storage/custom.iso:ro \
-  -v $PWD/windows/shared:/storage/shared:rw \
-  -v $PWD/windows/win11x64.xml:/run/assets/win11x64.xml:ro \
-  -v $PWD/windows/nginx.conf:/etc/nginx/sites-enabled/web.conf:ro \
-  -p 127.0.0.1:2222:22 -p 127.0.0.1:3389:3389 -p 127.0.0.1:8006:8006 \
-  --device=/dev/kvm --cap-add NET_ADMIN dockurr/windows
-
-docker run --rm -it \
-  --stop-timeout 120 --name windows \
-  -e MANUAL=N \
-  -e VERSION=win11 \
-  -v $PWD/windows/shared:/storage/shared:rw \
-  -v $PWD/windows/win11x64.xml:/run/assets/win11x64.xml:ro \
-  -v $PWD/windows/nginx.conf:/etc/nginx/sites-enabled/web.conf:ro \
-  -p 127.0.0.1:2222:22 -p 127.0.0.1:3389:3389 -p 127.0.0.1:8006:8006 \
-  --device=/dev/kvm --cap-add NET_ADMIN dockurr/windows
-
-docker run --rm -it \
-  --stop-timeout 120 --name windows \
-  -e MANUAL=N \
-  -v /path/to/Win10_22H2_English_x64v1.iso:/storage/custom.iso:ro \
-  -v $PWD/windows/shared:/storage/shared:rw \
-  -v $PWD/windows/win10x64.xml:/run/assets/win10x64.xml:ro \
-  -v $PWD/windows/nginx.conf:/etc/nginx/sites-enabled/web.conf:ro \
-  -p 127.0.0.1:2222:22 -p 127.0.0.1:3389:3389 -p 127.0.0.1:8006:8006 \
-  --device=/dev/kvm --cap-add NET_ADMIN dockurr/windows
-
-ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i $PWD/dockur-sshkey docker@127.0.0.1 -p 2222 ls
-```
-
-### ps1
+### cmd/ps1 snippets
 
 - turn on Network Discovery and File Sharing
 

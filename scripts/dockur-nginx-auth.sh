@@ -15,7 +15,7 @@ else
   echo 'admin:$apr1$zyjICK.T$K6Q9fLUxiVMN2VQcUlDAI.' > ./windows/shared/.htpasswd
 fi
 
-
+# Authentication: https://github.com/dockur/windows/issues/301#issuecomment-2018610554
 curl -fsSL --output ./windows/nginx.conf https://github.com/qemus/qemu-docker/raw/master/web/nginx.conf
 sed -i '2s@^@    auth_basic "Administrator’s Area";\n    auth_basic_user_file /storage/shared/.htpasswd;\n@' ./windows/nginx.conf
 head ./windows/nginx.conf

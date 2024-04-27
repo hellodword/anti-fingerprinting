@@ -1,4 +1,4 @@
-module github.com/hellodword/tls-fingerprinting
+module github.com/hellodword/anti-fingerprinting
 
 go 1.22
 
@@ -50,5 +50,3 @@ require (
 )
 
 replace golang.org/x/net v0.24.0 => github.com/hellodword/http2-custom-fingerprint v0.24.1-0.20240421163422-e10ffbc4cee8
-
-replace github.com/quic-go/quic-go => ./.3rd/quic-go

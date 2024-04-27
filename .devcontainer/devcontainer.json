@@ -1,4 +1,4 @@
 {
-    "image": "ghcr.io/hellodword/devcontainers-images-go-and-node"
-  }
-  
+  "image": "ghcr.io/hellodword/devcontainers-images-go-and-node",
+  "initializeCommand": "cp scripts/pre-commit .git/hooks/pre-commit"
+}

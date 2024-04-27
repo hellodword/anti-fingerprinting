@@ -8,7 +8,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net"
 	"net/http"
 	"os/signal"
 	"sync"
@@ -18,7 +17,7 @@ import (
 	"github.com/dreadl0ck/tlsx"
 	"github.com/gaukas/clienthellod"
 	"github.com/google/uuid"
-	"github.com/hellodword/tls-fingerprinting/internal/common"
+	"github.com/hellodword/anti-fingerprinting/internal/common"
 	"github.com/quic-go/quic-go"
 	"github.com/quic-go/quic-go/http3"
 	"github.com/wi1dcard/fingerproxy/pkg/fingerprint"
@@ -118,15 +117,10 @@ func main() {
 	server.VerboseLogs = *flagVerboseLogs
 
 	quicTlsConf := http3.ConfigureTLSConfig(tlsConf)
-	quicConf := &quic.Config{
+	quicConf := applyQuicPatch(&quic.Config{
 		Allow0RTT:       true,
 		EnableDatagrams: false,
-		FirstPacketHijacker: func(quicFirst []byte, remoteAddr net.Addr, rcvTime time.Time) {
-			quicFirstClone := make([]byte, len(quicFirst))
-			copy(quicFirstClone, quicFirst)
-			quicFirstPacketPool.Store(remoteAddr.String(), quicFirstClone)
-		},
-	}
+	})
 	quicServer := &http3.Server{
 		Addr:       *flagListenAddr,
 		Handler:    r,

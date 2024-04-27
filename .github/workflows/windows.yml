@@ -1,7 +1,10 @@
-name: browser on windows in docker
+name: windows
 
 on:
   workflow_dispatch:
+
+env:
+  GOTOOLCHAIN: "local"
 
 jobs:
   # https://www.kenmuse.com/blog/dynamic-build-matrices-in-github-actions/
@@ -11,22 +14,22 @@ jobs:
       mymatrix: ${{ steps.dataStep.outputs.myoutput }}
     steps:
       - uses: actions/checkout@v4
-      - name: apply patch
-        run: ./scripts/apply-patch.sh
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: "stable"
 
-      - name: fetch latest browser
+      - name: build fetch-latest-browser
         run: |
-          mkdir -p dist
-          go mod download
           go build -trimpath -ldflags "-s -w -buildid=" -o ./dist/fetch-latest-browser ./cmd/fetch-latest-browser
+
+      - name: run fetch-latest-browser
+        run: |
           docker run -v $PWD/dist:/w -w /w gcr.io/distroless/base-debian12:latest /w/fetch-latest-browser
 
-      - id: dataStep
+      - name: dynamic matrix for next job
+        id: dataStep
         run: |
           browsers="$(cat ./dist/browser.json)"
           echo "myoutput=$(jq -cn --argjson environments "$browsers" '{"platform": ["win10","win11"], browser: $environments}')" >> $GITHUB_OUTPUT
@@ -41,22 +44,20 @@ jobs:
       matrix: ${{ fromJson(needs.generate-versions.outputs.mymatrix) }}
     steps:
       - uses: actions/checkout@v4
-      - name: apply patch
-        run: ./scripts/apply-patch.sh
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: "stable"
 
       - name: build collector
-        run: ./scripts/build-collector.sh
+        run: |
+          docker run --rm --name collector-builder -v `pwd`:/w -w /w golang:1 \
+            bash -c './scripts/apply-patch.sh && ./scripts/build-collector.sh'
+
+          sudo chown -R `id -u`:`id -g` dist
 
       - name: build compare-collectorinfo
         run: |
-          mkdir -p dist
-          go mod download
-          go build -trimpath -ldflags "-s -w -buildid=" -o ./dist/compare-collectorinfo ./cmd/compare-collectorinfo
+          docker run --rm --name collector-builder -v `pwd`:/w -w /w golang:1 \
+            bash -c './scripts/apply-patch.sh && ./scripts/build-compare-collectorinfo.sh'
+
+          sudo chown -R `id -u`:`id -g` dist
 
       - name: prepare
         run: |
@@ -160,13 +161,13 @@ jobs:
             content="$(echo "$json" | base64 -w0)"
             message="update $filename"
 
-            http_code=$(curl -o /dev/null -sSL -w "%{http_code}" "https://raw.githubusercontent.com/hellodword/tls-fingerprinting/assets/$filename")
+            http_code=$(curl -o /dev/null -sSL -w "%{http_code}" "https://raw.githubusercontent.com/${{ github.repository }}/assets/$filename")
 
-            url="https://api.github.com/repos/hellodword/tls-fingerprinting/contents/$filename"
+            url="https://api.github.com/repos/${{ github.repository }}/contents/$filename"
 
             if [ "$http_code" != "404" ]; then
               rm -rf /tmp/src.json
-              curl -fsSL --output /tmp/src.json "https://raw.githubusercontent.com/hellodword/tls-fingerprinting/assets/$filename"
+              curl -fsSL --output /tmp/src.json "https://raw.githubusercontent.com/${{ github.repository }}/assets/$filename"
               if docker run -v $PWD/dist:/w -w /w gcr.io/distroless/base-debian12:latest /w/compare-collectorinfo -s "$(cat /tmp/src.json)" -s "$(cat $filename)"; then
                 continue
               fi

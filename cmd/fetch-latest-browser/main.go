@@ -17,25 +17,18 @@ import (
 	"strings"
 
 	"github.com/dop251/goja"
+	"github.com/hellodword/anti-fingerprinting/internal/common"
 )
 
 type Commit struct {
 	Sha string `json:"sha"`
 }
 
-type BrowserType string
-
-const (
-	BrowserTypeChrome  BrowserType = "chrome"
-	BrowserTypeFirefox BrowserType = "firefox"
-	BrowserTypeEdge    BrowserType = "edge"
-)
-
 type Browser struct {
-	Version     string      `json:"version"`
-	URL         string      `json:"url,omitempty"`
-	Hash        string      `json:"hash,omitempty"`
-	BrowserType BrowserType `json:"browser,omitempty"`
+	Version     string             `json:"version"`
+	URL         string             `json:"url,omitempty"`
+	Hash        string             `json:"hash,omitempty"`
+	BrowserType common.BrowserType `json:"browser,omitempty"`
 }
 
 type ScoopInstaller struct {
@@ -172,7 +165,7 @@ func getEdgeVersions_1(nedge uint) ([]Browser, error) {
 		}
 
 		var edge = Browser{
-			BrowserType: BrowserTypeEdge,
+			BrowserType: common.BrowserTypeEdge,
 			Version:     edges[i].Releases[0].FullVersion,
 		}
 
@@ -239,7 +232,7 @@ func getEdgeVersions_2(nedge uint) ([]Browser, error) {
 		// fmt.Println(string(b[bytes.Index(b, []byte("downloadInformation[0].enTitle ='")) : bytes.Index(b, []byte("downloadInformation[0].enTitle ='"))+1024]))
 
 		var edge Browser
-		edge.BrowserType = BrowserTypeEdge
+		edge.BrowserType = common.BrowserTypeEdge
 
 		edge.Version = match1st(regexp.MustCompile(`downloadInformation\[0\]\.enTitle ='Microsoft Edge-Stable Channel Version \d+ Update for x64 based Editions \(Build ([\d\.]+)\)'`), b)
 		if edge.Version == "" {
@@ -303,7 +296,7 @@ func getChromeVersions_1(nchrome uint) ([]Browser, error) {
 			chrome.URL = chrome.Architecture.X64.URL
 			chrome.Hash = chrome.Architecture.X64.Hash
 			chrome.Architecture = nil
-			chrome.BrowserType = BrowserTypeChrome
+			chrome.BrowserType = common.BrowserTypeChrome
 
 			exists[chrome.Version] = struct{}{}
 			browsers = append(browsers, chrome.Browser)
@@ -344,7 +337,7 @@ func getFirefoxVersions_1(nfirefox uint) ([]Browser, error) {
 			firefox.URL = firefox.Architecture.X64.URL
 			firefox.Hash = firefox.Architecture.X64.Hash
 			firefox.Architecture = nil
-			firefox.BrowserType = BrowserTypeFirefox
+			firefox.BrowserType = common.BrowserTypeFirefox
 
 			exists[firefox.Version] = struct{}{}
 			browsers = append(browsers, firefox.Browser)
