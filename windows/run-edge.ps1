@@ -1,11 +1,10 @@
 $errorActionPreference='Stop'
-$SavePath = "$PWD"
-$BasePath = $env:TEMP
+
+$SrcPath = "$PWD"
 $Installer = "edge_installer.exe"
-cd $BasePath
 
 # https://stackoverflow.com/a/70736582
-switch -File $SavePath\.env{
+switch -File $SrcPath\.env{
   default {
     $name, $value = $_.Trim() -split '=', 2
     if ($name -and $name[0] -ne '#') { # ignore blank and comment lines.
@@ -14,16 +13,6 @@ switch -File $SavePath\.env{
   }
 }
 
-# pause windows update
-Invoke-WebRequest "https://github.com/vmware/ansible-vsphere-gos-validation/raw/main/windows/utils/scripts/pause_windows_update.ps1" -OutFile C:\pause_windows_update.ps1
-powershell.exe -ExecutionPolicy Bypass -File C:\pause_windows_update.ps1
-
-# install cert
-certutil -addstore "Root" $SavePath\certs\tls.crt
-# add hosts
-Add-Content -Path $env:windir\System32\drivers\etc\hosts -Value "`n172.17.0.1`texample.org" -Force
-ipconfig /flushdns
-
 # disable edge auto update
 New-NetFirewallRule -DisplayName "BlockEdgeUpdate" -Direction Outbound -Action Block -Program "${env:ProgramFiles(x86)}\Microsoft\EdgeUpdate\MicrosoftEdgeUpdate.exe"
 
@@ -31,8 +20,7 @@ $edge="${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe"
 
 $oriProductVersion=(Get-Item "$edge").VersionInfo.ProductVersion
 
-cp $SavePath\$Installer $BasePath\$Installer.msi
-Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"$BasePath\$Installer.msi`" /quiet ALLOWDOWNGRADE=1" -Wait
+Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"$SrcPath\$Installer`" /quiet ALLOWDOWNGRADE=1" -Wait
 
 
 (Get-Item $edge).VersionInfo

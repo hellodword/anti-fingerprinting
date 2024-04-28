@@ -13,6 +13,7 @@ pwd
 [ "$WINDOWS_VERSION" = "win11" ] || [ "$WINDOWS_VERSION" = "win10" ]
 
 echo "BROWSER_VERSION=$BROWSER_VERSION" >> ./windows/oem/.env
+cp ./windows/common.ps1 ./windows/oem/common.ps1
 cp ./windows/run-${BROWSER_BROWSER}.ps1 ./windows/oem/run-custom.ps1
 cp ./windows/install.bat ./windows/oem/install.bat
 
