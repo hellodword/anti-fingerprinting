@@ -6,7 +6,7 @@ set -x
 pwd
 
 mkdir -p ./dist/certs
-mkdir -p ./windows/shared/
+mkdir -p ./windows/oem/
 
 [ -f ./dist/certs/tls.key ] || \
 openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:secp384r1 -days 3650 \
@@ -20,5 +20,5 @@ openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:secp384r1 -days 3650 \
 
 sudo chown 65532:65532 ./dist/certs/*
 sudo chmod 444 ./dist/certs/*
-sudo rm -rf ./windows/shared/certs
-sudo cp -r ./dist/certs ./windows/shared/certs
+sudo rm -rf ./windows/oem/certs
+sudo cp -r ./dist/certs ./windows/oem/certs

@@ -5,13 +5,13 @@ set -x
 
 pwd
 
-mkdir -p ./windows/shared/
+mkdir -p ./windows/oem/
 
 [ -n "$BROWSER_URL" ]
 [ -n "$BROWSER_BROWSER" ]
 [ -n "$BROWSER_VERSION" ]
 
-version_path="./windows/shared/$BROWSER_BROWSER-$BROWSER_VERSION"
+version_path="./windows/oem/$BROWSER_BROWSER-$BROWSER_VERSION"
 [ -f "$version_path" ] || \
 aria2c --continue --out "$version_path" "$BROWSER_URL"
 
@@ -24,7 +24,7 @@ aria2c --continue --out "$version_path" "$BROWSER_URL"
 if [[ "$BROWSER_URL" == *.cab ]]; then
   which cabextract || sudo apt-get install -y cabextract
   cabextract "$version_path"
-  mv MicrosoftEdgeEnterpriseX64.msi ./windows/shared/${BROWSER_BROWSER}_installer.exe
+  mv MicrosoftEdgeEnterpriseX64.msi ./windows/oem/${BROWSER_BROWSER}_installer.exe
 else
-  mv "$version_path" ./windows/shared/${BROWSER_BROWSER}_installer.exe
+  mv "$version_path" ./windows/oem/${BROWSER_BROWSER}_installer.exe
 fi

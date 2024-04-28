@@ -1,5 +1,5 @@
 $errorActionPreference='Stop'
-$SavePath = "\\host.lan\Data"
+$SavePath = "$PWD"
 $BasePath = $env:TEMP
 $Installer = "firefox_installer.exe"
 cd $BasePath
