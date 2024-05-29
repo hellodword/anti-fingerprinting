@@ -9,10 +9,10 @@ require (
 	github.com/go-chi/chi/v5 v5.0.12
 	github.com/go-chi/cors v1.2.1
 	github.com/google/uuid v1.3.1
-	github.com/quic-go/quic-go v0.42.0
+	github.com/quic-go/quic-go v0.44.0
 	github.com/refraction-networking/utls v1.6.4
 	github.com/wi1dcard/fingerproxy v0.5.0
-	golang.org/x/net v0.24.0
+	golang.org/x/net v0.25.0
 	gorm.io/driver/sqlite v1.5.5
 	gorm.io/gorm v1.25.9
 )
@@ -40,13 +40,13 @@ require (
 	github.com/prometheus/procfs v0.12.0 // indirect
 	github.com/quic-go/qpack v0.4.0 // indirect
 	go.uber.org/mock v0.4.0 // indirect
-	golang.org/x/crypto v0.22.0 // indirect
-	golang.org/x/exp v0.0.0-20230905200255-921286631fa9 // indirect
-	golang.org/x/mod v0.14.0 // indirect
-	golang.org/x/sys v0.19.0 // indirect
-	golang.org/x/text v0.14.0 // indirect
-	golang.org/x/tools v0.16.1 // indirect
+	golang.org/x/crypto v0.23.0 // indirect
+	golang.org/x/exp v0.0.0-20240506185415-9bf2ced13842 // indirect
+	golang.org/x/mod v0.17.0 // indirect
+	golang.org/x/sys v0.20.0 // indirect
+	golang.org/x/text v0.15.0 // indirect
+	golang.org/x/tools v0.21.0 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 )
 
-replace golang.org/x/net v0.24.0 => github.com/hellodword/http2-custom-fingerprint v0.24.1-0.20240421163422-e10ffbc4cee8
+replace golang.org/x/net v0.25.0 => github.com/hellodword/http2-custom-fingerprint v0.25.1-0.20240507035927-a1b3513705a1

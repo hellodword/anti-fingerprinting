@@ -125,7 +125,7 @@ func main() {
 		Addr:       *flagListenAddr,
 		Handler:    r,
 		TLSConfig:  quicTlsConf,
-		QuicConfig: quicConf,
+		QUICConfig: quicConf,
 	}
 
 	// listen and serve
@@ -224,8 +224,12 @@ func echoServer(db *gorm.DB) func(http.ResponseWriter, *http.Request) {
 			res.FingerProxy.Detail.MetaData = data
 
 			res.Clienthellod = &common.CollectedInfoClienthellod{
-				TLS: ch,
-				Raw: ch.Raw(),
+				TLS:           ch,
+				Raw:           ch.Raw(),
+				NID:           common.Ptr[int64](ch.FingerprintNID(false)),
+				NIDNormalized: common.Ptr[int64](ch.FingerprintNID(true)),
+				ID:            ch.FingerprintID(false),
+				IDNormalized:  ch.FingerprintID(true),
 			}
 
 		} else {

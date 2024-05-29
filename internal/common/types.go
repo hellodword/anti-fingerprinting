@@ -25,9 +25,13 @@ type CollectedInfoFingerProxy struct {
 }
 
 type CollectedInfoClienthellod struct {
-	Raw  []byte                            `json:"raw"`
-	TLS  *clienthellod.ClientHello         `json:"tls,omitempty"`
-	QUIC *clienthellod.ClientInitialPacket `json:"quic,omitempty"`
+	Raw           []byte                            `json:"raw"`
+	TLS           *clienthellod.ClientHello         `json:"tls,omitempty"`
+	QUIC          *clienthellod.ClientInitialPacket `json:"quic,omitempty"`
+	NID           *int64                            `json:"nid,omitempty"`
+	NIDNormalized *int64                            `json:"nid_normalized,omitempty"`
+	ID            string                            `json:"id,omitempty"`
+	IDNormalized  string                            `json:"id_normalized,omitempty"`
 }
 
 type CollectedInfo struct {
@@ -52,3 +56,7 @@ const (
 	BrowserTypeFirefox BrowserType = "firefox"
 	BrowserTypeEdge    BrowserType = "edge"
 )
+
+func Ptr[T any](v T) *T {
+	return &v
+}
