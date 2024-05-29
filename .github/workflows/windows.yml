@@ -91,9 +91,16 @@ jobs:
           df -T
           df -T `pwd`
 
-      - uses: rokibhasansagar/slimhub_actions@a28a11a35d81967c82448c183cb17a34b7514a9a
+      - uses: AdityaGarg8/remove-unwanted-software@3ccb44bee98b5232ab087e2bb23a5d8b14043223
         with:
-          retain: "docker_buildkit,container_tools"
+          remove-dotnet: "true"
+          remove-android: "true"
+          remove-haskell: "true"
+          remove-codeql: "true"
+          remove-docker-images: "false"
+          remove-large-packages: "false"
+          remove-cached-tools: "true"
+          remove-swapfile: "false"
 
       - name: (Debug) show storage
         run: |
